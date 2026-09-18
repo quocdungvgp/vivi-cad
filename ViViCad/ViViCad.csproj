@@ -1,0 +1,37 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!-- AutoCAD 2021 chạy trên .NET Framework 4.8 -> plugin bắt buộc build net48, x64. -->
+  <PropertyGroup>
+    <TargetFramework>net48</TargetFramework>
+    <PlatformTarget>x64</PlatformTarget>
+    <LangVersion>7.3</LangVersion>
+    <RootNamespace>ViViCad</RootNamespace>
+    <AssemblyName>ViViCad</AssemblyName>
+    <AcadDir>C:\Program Files\Autodesk\AutoCAD 2021</AcadDir>
+  </PropertyGroup>
+
+  <!-- Trình biên dịch của .NET SDK 10 báo lỗi "Windows doesn't fully support CET" trên máy này
+       → dùng csc.exe (bản .NET Framework) của Visual Studio nếu có. -->
+  <PropertyGroup Condition="Exists('C:\Program Files\Microsoft Visual Studio\18\Community\MSBuild\Current\Bin\Roslyn\csc.exe')">
+    <CscToolPath>C:\Program Files\Microsoft Visual Studio\18\Community\MSBuild\Current\Bin\Roslyn</CscToolPath>
+    <CscToolExe>csc.exe</CscToolExe>
+    <UseSharedCompilation>false</UseSharedCompilation>
+  </PropertyGroup>
+
+  <!-- Private=false: không copy DLL của AutoCAD ra thư mục bin, AutoCAD tự nạp bản của nó. -->
+  <ItemGroup>
+    <Reference Include="acdbmgd">
+      <HintPath>$(AcadDir)\acdbmgd.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="acmgd">
+      <HintPath>$(AcadDir)\acmgd.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="accoremgd">
+      <HintPath>$(AcadDir)\accoremgd.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+  </ItemGroup>
+
+</Project>
