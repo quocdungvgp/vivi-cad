@@ -1,0 +1,76 @@
+# VIVI CAD ECOSYSTEM - MASTER ARCHITECTURE & CURRENT STATE
+
+Verified local source: `main` · 18/09/2026.
+Đây là bộ định tuyến kiến trúc cốt lõi cho C# AutoCAD Plugin (ViVi CAD). Tất cả Dev và AI (Claude/Cursor) **BẮT BUỘC** đọc file này trước khi viết bất kỳ dòng code nào.
+
+---
+
+## 1. TẦM NHÌN VÀ PHÂN VAI (CORE VISION)
+Hệ sinh thái ViVi XPXD hoạt động dựa trên nguyên tắc **Single Source of Truth** (Một nguồn chân lý duy nhất).
+- **App ViVi (Firebase): BỘ NÃO.** Chứa dữ liệu gốc (OCR Sổ hồng, Chủ đầu tư), tính toán quy chuẩn mật độ (`density-model.js`), lưu trữ Drive, phân quyền người dùng và **tự động sinh văn bản (Đơn Xin Phép - Word)**.
+- **AutoCAD Plugin (C#): XƯỞNG CƠ KHÍ.** Chỉ chịu trách nhiệm đồ họa: Vẽ nét, tính diện tích, bắt lỗi kiến trúc (thang, ban công) và xuất bản vẽ PDF. CAD **KHÔNG** tự bịa dữ liệu pháp lý, **KHÔNG** tự sinh file Word.
+
+---
+
+## 2. BỘ LUẬT TỬ HUYỆT (STRICT RULES)
+
+### 2.1. Luật Code AutoCAD C#
+1. **100% Model Space:** Cấm tuyệt đối dùng Layout. Mọi thao tác dàn trang, rải Khung A3, Dim, Text đều nằm trên Model Space.
+2. **Validator-First (Trạm kiểm lâm):** Mọi lệnh chạy phải quét kiểm tra file `ViVi_Template.dwt` hiện hành (có đủ Layer, DimStyle, Block gốc không). Thiếu -> Chặn lệnh ngay. **Cấm AI tự sinh layer rác để bù vào.**
+3. **No Explode:** Tôn trọng thực thể. Cấm phá vỡ Block, Dim.
+4. **Bọc Transaction:** Mọi hàm can thiệp Database CAD phải bọc trong `using (Transaction tr = ...)` và kết thúc bằng `tr.Commit()`. Quên là Fatal Error.
+
+### 2.2. Luật Dữ Liệu & API
+1. **Repository Pattern (`GlobalDataManager`):** Mọi Module (M4, M5, M8...) tuyệt đối không tự lấy dữ liệu ngoài, mà phải Get/Set thông qua class `GlobalDataManager`. Giai đoạn 1: Class này đọc/ghi vào XRecord của CAD. Giai đoạn 2: Nó sẽ kết nối API.
+2. **App Check Bypass:** App ViVi đã bật reCAPTCHA v3. C# Desktop cấm nhúng Service Account. Giao tiếp API (Module 14) **BẮT BUỘC** phải đi qua **Firebase Cloud Functions** (dùng Admin SDK) bằng `idToken` để xác thực.
+
+---
+
+## 3. BẢN ĐỒ KIẾN TRÚC 14 MODULES
+
+| Nhóm | Module / Chức năng | Đặc tả Luồng thực thi & Nhiệm vụ |
+|---|---|---|
+| **CORE** | **M0: Core (Trạm điều khiển)** | Chứa `ViViValidator` (Chặn template rác) và `GlobalDataManager` (Trạm trung chuyển Data bằng XRecord). |
+| **DRAFTING** | **M1: Lưới Trục & Kích thước** | Rải trục tự nhận DimScale theo Block. |
+| | **M2: Tổng MB & Ranh đất** | Vẽ ranh đất, tự động lật Text ghi chú nếu góc > 90 độ. |
+| | **M3: Cao độ tự động** | Chèn Dynamic Block `VIVI_CaoDo` (có biến Flip). |
+| **COMPUTE** | **M4: Auto Area (Diện tích)** | Thuật toán quét Polyline tàng hình, tự nhận diện lỗ thông tầng (Point in Polygon) để bóc khối lượng. |
+| **LAYOUT** | **M5: Dàn trang Bento Box** | Tự rải Block Khung A3, đánh số trang tự động (Visibility: Bìa / Trong). |
+| **UI/UX** | **M6: Ribbon & Master Button** | Tích hợp Menu Ribbon. Nút "Chúa": Bóp cò 1 phát chạy liên hoàn M4 -> M5 -> M8 -> M10. |
+| **DELEGATED** | **M7: Xuất Word Đơn XPXD** | **[ĐÃ GẠCH BỎ]**. Giao lại toàn quyền cho Firebase App xử lý để đảm bảo tính đồng bộ pháp lý. |
+| **AUDIT** | **M8: Cảnh sát pháp lý** | Bắt lỗi kiến trúc: Đụng đầu lọt lòng thang (<2m), ranh nước chảy (mái lòi ra ngoài), vượt mật độ cho phép. |
+| **ANNOTATION**| **M9: Smart Tags** | Tự động ném cụm MText ghi chú pháp lý (Snap vào góc Khung A3). |
+| **PUBLISH** | **M10: Auto-Plot 1-Click** | Background Plot. Quét tọa độ Khung A3 -> Nạp `ViVi_PlotStyle.ctb` -> Gom N trang ra 1 file PDF duy nhất. |
+| **PURGE** | **M11: Máy Lọc Máu** | WBlockClone API. Bơm nét từ bản vẽ thiết kế ngoại lai rác rưởi sang file trắng `ViVi_Template`. Cấm dọn rác trên file gốc. |
+| **GIS/BOQ** | **M12: Cầu nối VN-2000** | Copy/Paste X,Y -> Vẽ Polyline ranh. Export ranh từ CAD ra `GeoJSON` cho QField/QGIS. |
+| | **M13: Khái toán nhanh (BOQ)**| Lấy diện tích từ M4, nhân hệ số đơn giá -> Sinh bảng Excel/Table báo giá ngay trên CAD. |
+| **API SYNC** | **M14: Two-Way API Gateway** | **Giai đoạn 2.** Kéo OCR + Mật độ từ App đắp vào Khung tên CAD. Đẩy Diện tích CAD lên App để trigger sinh Word & ném Drive. |
+
+---
+
+## 4. NHẬT KÝ & TRẠNG THÁI SOURCE CODE (CẬP NHẬT: 18/09/2026)
+
+**[X] ĐÃ HOÀN THÀNH (Cấm AI sửa lại nếu không có lệnh):**
+- Quy hoạch xong kiến trúc toàn hệ thống.
+- Chốt chiến lược lách App Check bằng Cloud Functions.
+- Project C# Class Library đã khởi tạo (`ViViCad/ViViCad.csproj` — net48, x64, AutoCAD 2021).
+- **M0 (Core)** — commit `7df1eed`. Build OK, **chưa chạy thử trong AutoCAD**.
+  - `ViViValidator` (`ViViCad/Core/ViViValidator.cs`): `ValidateTemplate()`, `Check(Database)` → `ValidationResult` (`MissingLayers`, `MissingBlocks`, `IsValid`, `ToMessage()`); danh sách chuẩn `RequiredLayers`, `RequiredBlocks`.
+  - `GlobalDataManager` (`ViViCad/Core/GlobalDataManager.cs`): `GetHoSo()`, `GetHoSo(Database)`, `SaveHoSo(HoSoData)`, `SaveHoSo(Database, HoSoData)`, `SetTongDienTich(Database, double)`, `Repository`.
+  - `HoSoData`: `MaHoSo`, `TenCDT`, `DiaChi`, `TongDienTich` (m², `null` = chưa tính), `IsEmpty`.
+  - `IHoSoRepository` / `XRecordHoSoRepository`: lưu ở NOD → `VIVI` → Xrecord `HOSO`.
+  - Lệnh: `VIVI_INIT` (test Validator + ghi/đọc dữ liệu mẫu), `VIVI_HOSO` (chỉ đọc hồ sơ).
+
+**[ ] ĐANG LÀM / TREO (Focus cho phiên hiện tại):**
+- **Chạy thử M0 trong AutoCAD:** `NETLOAD` → `VIVI_INIT` trên bản vẽ thử → lưu, đóng, mở lại → `VIVI_HOSO`.
+- **Viết M1 (Lưới trục):** Viết lệnh tự động rải trục và Dim.
+- **Treo:** Validator chưa kiểm DimStyle (luật 2.1.2) — chờ chốt tên DimStyle chuẩn trong `ViVi_Template.dwt`.
+
+---
+
+## 5. LUẬT TƯƠNG TÁC CHO AI (CURSOR / CLAUDE INSTRUCTIONS)
+> **AI LƯU Ý: Đây là `.cursorrules` ngầm định. Mày phải tuân thủ tuyệt đối.**
+
+1. **Chỉ làm theo Next Step:** Chỉ viết code cho task đang được đánh dấu ở mục ĐANG LÀM. Không code lố sang Module khác.
+2. **Cấm bịa API:** Gọi đúng tên Layer/Block đã khai báo trong bảng. Nếu Fatal Error AutoCAD, không được tự mò random, phải yêu cầu User cung cấp Exception Log.
+3. **Viết tới đâu, Lưu tới đó (Auto-Update):** Sau khi hoàn thành xong một hàm, một Class hoặc một Module, mày **BẮT BUỘC** phải tự động mở file này (`README.md`) ra, sửa mục "4. NHẬT KÝ & TRẠNG THÁI" (Chuyển task thành `[X]`, liệt kê tên Public Methods vừa viết, và đẩy task tiếp theo lên). Không được đợi User nhắc.
