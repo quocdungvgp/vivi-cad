@@ -1,0 +1,26 @@
+# --- Build (.NET / Visual Studio) ---
+bin/
+obj/
+.vs/
+*.user
+*.suo
+
+# --- Khoá & bí mật (GĐ2 - M14 Firebase) — TUYỆT ĐỐI không đưa lên GitHub ---
+.env
+.env.*
+*serviceAccount*.json
+*firebase-adminsdk*.json
+secrets/
+
+# --- Bản vẽ có dữ liệu khách & file rác AutoCAD ---
+# ViVi_Template.dwt KHÔNG bị chặn: template chuẩn phải được lưu trong repo.
+*.dwg
+*.dxf
+*.bak
+*.sv$
+*.dwl
+*.dwl2
+*.ac$
+plot.log
+*.pdf
+*.xlsx

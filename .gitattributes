@@ -1,0 +1,9 @@
+# Git tự chuẩn hoá xuống dòng cho file chữ.
+* text=auto
+
+# File nhị phân: Git không được đụng vào nội dung (sửa xuống dòng sẽ làm hỏng file).
+*.dwt binary
+*.dwg binary
+*.dll binary
+*.ctb binary
+*.pdf binary
