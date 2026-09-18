@@ -89,7 +89,8 @@ Hệ sinh thái ViVi XPXD hoạt động dựa trên nguyên tắc **Single Sour
 - Build: `dotnet build ViViCad/ViViCad.csproj` → ra `ViViCad/bin/Debug/net48/ViViCad.dll` → trong AutoCAD gõ `NETLOAD`.
 
 **Cách làm việc owner đã dặn:**
-- File `.md` do owner tự viết/đưa nội dung — AI không tự tạo file MD khi chưa được bảo.
+- File `.md` **ban đầu** do owner tự viết/đưa nội dung — AI không tự tạo file MD mới.
+- Nhưng **khi đã bắt đầu làm việc**, AI **bắt buộc tự cập nhật** các file MD đang có (README mục 4) sau mỗi việc xong, không đợi nhắc (luật 5.3).
 - Chỉ commit / đẩy lên GitHub khi owner bảo.
 - Đổi máy: ngồi vào là `git pull` trước; xong việc bảo AI commit + đẩy lên trước khi rời máy.
 
