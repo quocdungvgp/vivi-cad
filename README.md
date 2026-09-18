@@ -66,6 +66,35 @@ Hệ sinh thái ViVi XPXD hoạt động dựa trên nguyên tắc **Single Sour
 - **Viết M1 (Lưới trục):** Viết lệnh tự động rải trục và Dim.
 - **Treo:** Validator chưa kiểm DimStyle (luật 2.1.2) — chờ chốt tên DimStyle chuẩn trong `ViVi_Template.dwt`.
 
+### Nhật ký phiên 18/09/2026 (máy công ty)
+
+**Đã làm theo thứ tự:**
+1. Tạo repo **private** `github.com/quocdungvgp/vivi-cad`, tách hẳn khỏi repo App ViVi (`vividichvuCPXD`).
+2. Commit `7df1eed` — M0 Core: `ViViValidator`, `GlobalDataManager`, lệnh `VIVI_INIT` / `VIVI_HOSO`.
+3. Commit `2487582` — `.gitignore` (chặn `bin/`, `obj/`, khoá Firebase, `*.dwg`/`*.dxf`/`*.pdf` có dữ liệu khách; **không** chặn `ViVi_Template.dwt`) và `.gitattributes` (đánh dấu `.dwt`/`.dwg`/`.dll`/`.ctb`/`.pdf` là nhị phân).
+4. Commit `e34e07f` — `README.md` này + `CLAUDE.md` (một dòng trỏ về README).
+
+**Quyết định kỹ thuật đã chốt trong M0 (đừng đảo lại nếu không có lý do mới):**
+- Lưu hồ sơ ở **Named Objects Dictionary** (`VIVI` → Xrecord `HOSO`), không ở Extension Dictionary của một đối tượng — xoá đối tượng là mất dữ liệu.
+- Xrecord lưu theo cặp **khoá → giá trị**, có số phiên bản schema ở đầu → thêm trường mới ở GĐ2 không hỏng file cũ.
+- `GlobalDataManager` **không giữ cache static**: AutoCAD mở nhiều bản vẽ cùng lúc, cache chung làm hồ sơ file A dính sang file B.
+- Validator **không dùng `SymbolTable.Has()`** (vẫn trả true với layer vừa bị xoá trong phiên); duyệt bảng, so tên không phân biệt hoa/thường.
+- `TongDienTich` lưu kiểu số thực, đơn vị **m²**; `null` = chưa tính, khác 0.
+- `Save` tự khoá tài liệu (`LockDocument`) để sau này gọi được từ Ribbon/palette (M6).
+- M14 để **Giai đoạn 2**; GĐ1 dữ liệu hồ sơ nhập tay qua `GlobalDataManager`.
+
+**Môi trường build:**
+- AutoCAD **2021** → `net48`, x64. Đường dẫn AutoCAD nằm ở `<AcadDir>` trong `ViViCad.csproj`. Máy khác là AutoCAD **2025+** thì phải chuyển sang .NET 8 (code M0 không đổi).
+- Máy công ty: trình biên dịch của .NET SDK 10 lỗi *"Windows doesn't fully support CET"* → `.csproj` tự dùng `csc.exe` của Visual Studio 18 **nếu có**. Máy không có VS 18 thì bỏ qua, build bình thường.
+- Build: `dotnet build ViViCad/ViViCad.csproj` → ra `ViViCad/bin/Debug/net48/ViViCad.dll` → trong AutoCAD gõ `NETLOAD`.
+
+**Cách làm việc owner đã dặn:**
+- File `.md` do owner tự viết/đưa nội dung — AI không tự tạo file MD khi chưa được bảo.
+- Chỉ commit / đẩy lên GitHub khi owner bảo.
+- Đổi máy: ngồi vào là `git pull` trước; xong việc bảo AI commit + đẩy lên trước khi rời máy.
+
+**Chưa có trên GitHub:** `codemau.py` (đọc Layer/TextStyle/DimStyle của DXF bằng Python `ezdxf`) chỉ nằm trong thư mục App ViVi ở máy công ty.
+
 ---
 
 ## 5. LUẬT TƯƠNG TÁC CHO AI (CURSOR / CLAUDE INSTRUCTIONS)
