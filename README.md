@@ -91,8 +91,8 @@ Hệ sinh thái ViVi XPXD hoạt động dựa trên nguyên tắc **Single Sour
 **Cách làm việc owner đã dặn:**
 - File `.md` **ban đầu** do owner tự viết/đưa nội dung — AI không tự tạo file MD mới.
 - Nhưng **khi đã bắt đầu làm việc**, AI **bắt buộc tự cập nhật** các file MD đang có (README mục 4) sau mỗi việc xong, không đợi nhắc (luật 5.3).
-- Chỉ commit / đẩy lên GitHub khi owner bảo.
-- Đổi máy: ngồi vào là `git pull` trước; xong việc bảo AI commit + đẩy lên trước khi rời máy.
+- Làm xong việc là AI **tự commit + đẩy lên GitHub**, không cần owner yêu cầu.
+- Đổi máy: ngồi vào là `git pull` trước.
 
 **Chưa có trên GitHub:** `codemau.py` (đọc Layer/TextStyle/DimStyle của DXF bằng Python `ezdxf`) chỉ nằm trong thư mục App ViVi ở máy công ty.
 
