@@ -1,6 +1,6 @@
 # VIVI CAD ECOSYSTEM - MASTER ARCHITECTURE & CURRENT STATE
 
-Verified local source: `main` · 18/09/2026.
+Verified local source: `main` · 21/09/2026.
 Đây là bộ định tuyến kiến trúc cốt lõi cho C# AutoCAD Plugin (ViVi CAD). Tất cả Dev và AI (Claude/Cursor) **BẮT BUỘC** đọc file này trước khi viết bất kỳ dòng code nào.
 
 ---
@@ -48,7 +48,7 @@ Hệ sinh thái ViVi XPXD hoạt động dựa trên nguyên tắc **Single Sour
 
 ---
 
-## 4. NHẬT KÝ & TRẠNG THÁI SOURCE CODE (CẬP NHẬT: 18/09/2026)
+## 4. NHẬT KÝ & TRẠNG THÁI SOURCE CODE (CẬP NHẬT: 21/09/2026)
 
 **[X] ĐÃ HOÀN THÀNH (Cấm AI sửa lại nếu không có lệnh):**
 - Quy hoạch xong kiến trúc toàn hệ thống.
@@ -60,11 +60,26 @@ Hệ sinh thái ViVi XPXD hoạt động dựa trên nguyên tắc **Single Sour
   - `HoSoData`: `MaHoSo`, `TenCDT`, `DiaChi`, `TongDienTich` (m², `null` = chưa tính), `IsEmpty`.
   - `IHoSoRepository` / `XRecordHoSoRepository`: lưu ở NOD → `VIVI` → Xrecord `HOSO`.
   - Lệnh: `VIVI_INIT` (test Validator + ghi/đọc dữ liệu mẫu), `VIVI_HOSO` (chỉ đọc hồ sơ).
+- **Lệnh đọc tên chuẩn** — commit `42b3ba7` (21/09). Build OK, **chưa chạy thử trong AutoCAD**.
+  - `TemplateInfo` (`ViViCad/Core/TemplateInfo.cs`): `Build(Database)` → báo cáo văn bản gồm tham số bản vẽ (DIMSCALE, LTSCALE, INSUNITS, MEASUREMENT, Layer/DimStyle/TextStyle hiện hành), Layer (màu, nét, độ dày, đóng băng/khoá/tắt/không in), DimStyle (DIMSCALE, DIMTXT, DIMASZ, DIMLFAC, số lẻ, kiểu chữ), TextStyle (font, cao, rộng), Block gọi được bằng tên (+ block động, XREF, **tag thuộc tính**) và mục đối chiếu với `ViViValidator`.
+  - `TemplateCommands` (`ViViCad/Commands/TemplateCommands.cs`): lệnh **`VIVI_KIEM_TEMPLATE`** — in tóm tắt ra dòng lệnh, ghi báo cáo đầy đủ ra `<tên bản vẽ>-vivi-template-info.txt` **cạnh file DWG** (bản vẽ chưa lưu thì ra Desktop), UTF-8 **có BOM**.
+  - Lệnh này **cố ý không gọi `ValidateTemplate()`** ở đầu — nó sinh ra để soi cả bản vẽ chưa đạt chuẩn, và chỉ đọc nên không có gì để chặn.
 
 **[ ] ĐANG LÀM / TREO (Focus cho phiên hiện tại):**
+- **Chạy `VIVI_KIEM_TEMPLATE` trên `ViVi_Template.dwt`** rồi dán file kết quả vào chat. Đây là chốt chặn của hai việc dưới — làm cái này trước.
 - **Chạy thử M0 trong AutoCAD:** `NETLOAD` → `VIVI_INIT` trên bản vẽ thử → lưu, đóng, mở lại → `VIVI_HOSO`.
-- **Viết M1 (Lưới trục):** Viết lệnh tự động rải trục và Dim.
-- **Treo:** Validator chưa kiểm DimStyle (luật 2.1.2) — chờ chốt tên DimStyle chuẩn trong `ViVi_Template.dwt`.
+- **Treo (đã có đường gỡ):** Validator chưa kiểm DimStyle (luật 2.1.2) — chờ tên DimStyle thật từ báo cáo trên.
+- **Viết M1 (Lưới trục):** chờ **tên layer trục** + **tên block đầu trục** thật. `RequiredLayers` hiện mới có `VIVI_Dim`, `VIVI_Tuong`, `VIVI_KhungVien`; `RequiredBlocks` mới có `VIVI_KhungTen_A3` — chưa có gì cho trục, mà luật 5.2 cấm bịa tên còn luật 2.1.2 cấm tự tạo layer để vá.
+
+### Nhật ký phiên 21/09/2026
+
+- Thêm lệnh `VIVI_KIEM_TEMPLATE` (commit `42b3ba7`) — `dotnet build` PASS, 0 warning.
+- **Vì sao làm cái này trước M1:** M1 cần gọi tên layer trục/block đầu trục, cái treo DimStyle cũng chỉ thiếu đúng một danh sách tên. Đoán tên là gãy luật 5.2, mà gãy thì Validator chặn lệnh ngay — nên bỏ 1 việc nhỏ để có tên thật rẻ hơn viết M1 rồi sửa lại tên khắp nơi.
+- **Bẫy đã dính khi build, ghi để khỏi mất thời gian lại:** có `using Autodesk.AutoCAD.Runtime` thì viết `catch (Exception ex)` trần là **lỗi biên dịch CS0104** — AutoCAD có `Runtime.Exception` trùng tên `System.Exception`. Phải ghi rõ `catch (System.Exception ex)` (bắt cả hai, vì lỗi AutoCAD cũng kế thừa từ nó).
+- Bẫy thứ hai đã chặn trước: mỗi lớp lệnh mới phải tự thêm `[assembly: CommandClass(typeof(...))]`. Thiếu là NETLOAD xong gõ lệnh ra "Unknown command", nhìn y như build hỏng.
+- Báo cáo ghi UTF-8 **có BOM** vì Notepad thiếu BOM sẽ hiện tiếng Việt thành ký tự rác.
+- `codemau.py` (đọc DXF bằng `ezdxf`) coi như **không cần nữa**: lệnh này đọc thẳng bản vẽ đang mở, không phải xuất DXF, không cần Python. Bản `codemau.py` trong thư mục App ViVi vẫn đang là khung rỗng (dòng gọi hàm bị comment).
+- Máy đang làm có sẵn AutoCAD 2021 + .NET SDK + `csc.exe` của Visual Studio 18 → build ra `ViViCad/bin/Debug/net48/ViViCad.dll` bình thường.
 
 ### Nhật ký phiên 18/09/2026 (máy công ty)
 
